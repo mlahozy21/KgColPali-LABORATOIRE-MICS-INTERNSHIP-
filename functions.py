@@ -62,9 +62,9 @@ def get_relevant_documents(question,kg=2,kg_context='', k=32,thresholdrag=0,thre
     if k>0: 
         top_k_scores, top_k_indices = select(thresholdrag, query_embeddings, current_embeddings,k)
         for index_in_dataset in top_k_indices:
-            # Convertir el índice a un entero de Python
-            original_idx = index_in_dataset.item()  # Esto funciona porque top_k_indices es 1D
-            # Recuperar el número de página del dataset usando el índice
+            # Convert the index to a Python integer
+            original_idx = index_in_dataset.item()  # This works because top_k_indices is 1D
+            # Retrieve the page number from the dataset using the index
             snippet_image = dataset[original_idx]
             retrieved_snippets.append(snippet_image)             
     if kg == 4 or kg == 3:
@@ -80,9 +80,9 @@ def get_relevant_documents(question,kg=2,kg_context='', k=32,thresholdrag=0,thre
         elif kg == 4:       
             top_k_scores, top_k_indices = select(threshold=thresholdkg,query_embeddings=kg_embeddings,image_embeddings=current_embeddings,k=k)
             for index_in_dataset in top_k_indices:
-                # Convertir el índice a un entero de Python
-                original_idx = index_in_dataset.item()  # Esto funciona porque top_k_indices es 1D
-                # Recuperar el número de página del dataset usando el índice
+                # Convert the index to a Python integer
+                original_idx = index_in_dataset.item()  # This works because top_k_indices is 1D
+                # Retrieve the page number from the dataset using the index
                 snippet_image = dataset[original_idx]
                 retrieved_snippets.append(snippet_image)
     return retrieved_snippets, kg_context
@@ -90,10 +90,10 @@ def get_relevant_documents(question,kg=2,kg_context='', k=32,thresholdrag=0,thre
 def prepare_snippets_for_gemini(retrieved_snippets,content):
     for snippet in retrieved_snippets:
         try:
-            # Convertir snippet a formato compatible con Gemini API
+            # Convert snippet to a format compatible with Gemini API
             if isinstance(snippet, str):
                 img = Image.open(snippet)
-                # Convertir imagen a bytes
+                # Convert image to bytes
                 buffer = BytesIO()
                 img.save(buffer, format="PNG")
                 img_data = buffer.getvalue()
@@ -104,7 +104,7 @@ def prepare_snippets_for_gemini(retrieved_snippets,content):
                     }
                 })
             elif isinstance(snippet, Image.Image):
-                # Convertir objeto PIL.Image a bytes
+                # Convert PIL.Image object to bytes
                 buffer = BytesIO()
                 snippet.save(buffer, format="PNG")
                 img_data = buffer.getvalue()
@@ -115,23 +115,23 @@ def prepare_snippets_for_gemini(retrieved_snippets,content):
                     }
                 })
             else:
-                print(f"Snippet no soportado: {snippet}")
+                print(f"Unsupported snippet: {snippet}")
         except Exception as e:
-            print(f"Error al procesar {snippet}: {str(e)}")
+            print(f"Error processing {snippet}: {str(e)}")
             continue
     
     return content
 
 def medrag_answer(question, options=None,k=32, kg=1,thresholdrag=0,thresholdkg=0,**kwargs):
-    # Formatear opciones si existen
+    # Format options if they exist
     if options is not None:
         options_text = '\n'.join([f"{key}. {options[key]}" for key in sorted(options.keys())])
     else:
         options_text = ''
     retrieved_snippets = []
-    scores = [] #Modos: 1. nada, 2. solo RAG, 3. RAG y KG context, 4. RAG y KG retrieve
+    scores = [] #Modes: 1. nothing, 2. only RAG, 3. RAG and KG context, 4. RAG and KG retrieve
     if kg == 1:
-        #Meter aquí template sin KG
+        # Insert template without KG here
         system_prompt = apitemplates["cot_system"]
         prompt_template = apitemplates["cot_prompt"]
         prompt = prompt_template.render(
@@ -139,7 +139,7 @@ def medrag_answer(question, options=None,k=32, kg=1,thresholdrag=0,thresholdkg=0
             options=options_text
         ) 
     elif kg == 2:
-        #Meter aquí template con RAG
+        # Insert template with RAG here
         retrieved_snippets,_= get_relevant_documents(question,thresholdrag=thresholdrag,thresholdkg=thresholdkg, k=k)
         if len(retrieved_snippets) == 0:
             system_prompt = apitemplates["cot_system"]
@@ -185,12 +185,12 @@ def medrag_answer(question, options=None,k=32, kg=1,thresholdrag=0,thresholdkg=0
             question=question,
             options=options_text
         ) 
-    # Preparar entrada (texto y imágenes recuperadas)
+    # Prepare input (text and retrieved images)
     content = [
         {"text": system_prompt},
         {"text": prompt}
     ]   
-    # Añadir imágenes recuperadas
+    # Add retrieved images
     content= prepare_snippets_for_gemini(retrieved_snippets,content)
     
     response = gemini.generate_content(content)
